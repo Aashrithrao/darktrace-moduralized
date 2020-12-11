@@ -1,0 +1,10 @@
+instance_count              = 1
+instance_type               = "t3.medium"
+region                      = "us-east-1"
+vpc_id                      = "vpc-00cc95084eb8e0f17"
+subnet_id                   = "subnet-086feec108fe4cc66"
+keyname                     = "deployer"
+publickey                   = ""
+sg1_ingress_cidr_blocks     = ["172.23.120.0/21"]
+sg2_ingress_cidr_blocks     = ["172.28.243.93/32"]
+sg1_egress_cidr_blocks      = ["0.0.0.0/0"]

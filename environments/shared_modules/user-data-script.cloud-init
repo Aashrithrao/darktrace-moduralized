@@ -1,0 +1,53 @@
+Content-Type: multipart/mixed; boundary="==BOUNDARY==" 
+MIME-Version: 1.0 
+
+--==BOUNDARY== 
+Content-Type: text/cloud-config; charset="us-ascii" 
+
+#cloud-config 
+#cloud_final_modules: 
+#- [scripts-user, always]
+#repo_update: none 
+#repo_upgrade: none 
+
+--==BOUNDARY== 
+Content-Type: text/x-shellscript; charset="us-ascii" 
+
+#!/bin/bash
+
+acctName="${account_name}"
+
+# Set vSensorMode to one of the following:
+#   pull - data is pulled from the vSensor by the DarkTrace master
+#   push - data is pushed by the vSensor to the DarkTrace master
+vSensorMode=pull
+echo "#### vSensorMode set to $vSensorMode"
+
+echo "#### Running apt-get to update and install software"
+apt-get update
+apt-get install awscli jq -y
+
+# Get Secrets from AWS Secrets Manager
+echo "#### Getting secrets from AWS Secrets Manager"
+for secretName in Petco-DarkTrace-Update-Key ${acctName}-vSensor; do
+  aws secretsmanager get-secret-value --secret-id DarkTrace/$secretName --region us-east-1 | jq -r .SecretString | sed -e 's/":"/=/g' -e 's/","/\n/g' -e 's/[{}"]//g' >> /etc/environment
+done
+
+# Load variables from /etc/environment
+set -a; source /etc/environment; set +a;
+
+echo "#### DarkTrace: Install packages"
+bash <(wget https://packages.darktrace.com/install -O -) --updateKey $DT_UPDATE_KEY
+
+if [ "$vSensorMode" = "pull" ]; then
+  echo "#### DarkTrace: Set DCIP HMAC TOKEN"
+  set_dcip_hmac.sh $DT_HMAC_TOKEN
+else
+  echo "#### DarkTrace: Set DT PUSH TOKEN"
+  set_pushtoken.sh $DT_PUSH_TOKEN $DT_MASTER_IP
+fi
+
+echo "#### DarkTrace: Set osSensor HMAC TOKEN"
+set_ossensor_hmac.sh $DT_OSS_HMAC_TOKEN
+
+--==BOUNDARY==--
